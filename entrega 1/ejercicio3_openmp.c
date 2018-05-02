@@ -1,4 +1,4 @@
-#include<omp.h>
+#include <omp.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include <sys/time.h>
@@ -14,6 +14,10 @@ double dwalltime(){
 }
 
 int main(int argc, char* argv[]){
+	if(argc<3){
+		printf("Error: faltan argumentos \n");
+		return 0;	
+	}
     unsigned long N = atol(argv[1]);
     arreglo = (int*)malloc(sizeof(int)*N);
     int numThreads = atol(argv[2]);
@@ -24,12 +28,13 @@ int main(int argc, char* argv[]){
         arreglo[i]= rand() % 10; //Inicializa arreglo
     }
     double timetick = dwalltime();
-    for(int i=0;i<N;i++) if((arreglo[i] % 2) == 0) pares++;
+    for(int i=0;i<N;i++) if((arreglo[i] & 1) == 0) pares++;
     printf("Tiempo: %f \n", dwalltime() - timetick);
     printf("Cantidad de numeros pares en el arreglo: %d \n", pares);
     pares = 0;
+	timetick = dwalltime();
     #pragma omp parallel for reduction(+ : pares)
-        for(int i=0;i<N;i++) if((arreglo[i] % 2) == 0) pares++;
+        for(int i=0;i<N;i++) if((arreglo[i] & 1) == 0) pares++;
     free(arreglo);
     printf("Tiempo: %f \n", dwalltime() - timetick);
     printf("Cantidad de numeros pares en el arreglo: %d \n", pares);
