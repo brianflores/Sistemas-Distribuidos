@@ -1,6 +1,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <sys/time.h>
+#include <omp.h>
 
 double dwalltime()
 {
@@ -15,11 +16,13 @@ double dwalltime()
 double *A, *B, *C, *D, *E, *F, *L, *U, *AA, *AAC, *LB, *LBE, *DU, *DUF, *TOTAL;
 
 int main(int argc,char*argv[]){
-    if (argc < 2){
+    if (argc < 3){
         printf("Faltan argumentos \n");
         return 0;
     }
     int i, j, k;
+    int numThreads = atol(argv[2]);
+    omp_set_num_threads(numThreads);
     double promedioB, promedioU, promedioL, timetick;
     unsigned long N = atol(argv[1]);
     unsigned long Total = N*N;
@@ -56,15 +59,16 @@ int main(int argc,char*argv[]){
     promedioU = 0;
     
     timetick = dwalltime();
-    
-    for(i=0;i<N;i++){   //Calcula los promedios
-       for(j=0;j<N;j++){
-           promedioB+= B[i*N+j];
-           promedioL+= L[i*N+j];
-           promedioU+= U[i*N+j];
-       }
-    }
+    #pragma omp parallel for reduction(+:promedioB,promedioL,promedioU)
+        for(i=0;i<N;i++){   //Calcula los promedios
+            for(j=0;j<N;j++){
+                promedioB+= B[i*N+j];
+                promedioL+= L[i*N+j];
+                promedioU+= U[i*N+j];
+            }
+        }
     promedioB = promedioB / Total;
+    printf("%f\n",promedioB);
     promedioL = promedioL / Total;
     promedioU = promedioU / Total;
     promedioL = promedioL * promedioU; //En promedioL queda el promedio de L por el de U.
@@ -151,4 +155,3 @@ int main(int argc,char*argv[]){
 return 0;
 
 }
-
