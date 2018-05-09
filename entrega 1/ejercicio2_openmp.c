@@ -13,7 +13,7 @@ double dwalltime()
   return sec;
 }
 
-double *A, *B, *C, *D, *E, *F, *L, *U, *AA, *AAC, *LB, *LBE, *DU, *DUF, *TOTAL;
+double *A, *At , *B, *C, *D, *E, *F, *L, *U, *AA, *AAC, *LB, *LBE, *DU, *DUF, *TOTAL;
 
 int main(int argc,char*argv[]){
     if (argc < 3){
@@ -23,10 +23,11 @@ int main(int argc,char*argv[]){
     int i, j, k;
     int numThreads = atol(argv[2]);
     omp_set_num_threads(numThreads);
-    double promedioB, promedioU, promedioL, timetick;
+    double promedioB, promedioU, promedioL, timetick, temp;
     unsigned long N = atol(argv[1]);
     unsigned long Total = N*N;
     A=(double*)malloc(sizeof(double)*N*N);
+    At=(double*)malloc(sizeof(double)*N*N);
     B=(double*)malloc(sizeof(double)*N*N);
     C=(double*)malloc(sizeof(double)*N*N);
     D=(double*)malloc(sizeof(double)*N*N);
@@ -34,9 +35,18 @@ int main(int argc,char*argv[]){
     F=(double*)malloc(sizeof(double)*N*N);
     L=(double*)malloc(sizeof(double)*N*N);
     U=(double*)malloc(sizeof(double)*N*N);
+    LBE=(double*)malloc(sizeof(double)*N*N); //LBE= (LB*E)*promedio B
+    LB=(double*)malloc(sizeof(double)*N*N); //LB= L*B
+    AA=(double*)malloc(sizeof(double)*N*N); //AA=A*A
+    AAC=(double*)malloc(sizeof(double)*N*N); //AAC=(AA*C)*promedio de L y U
+    DU=(double*)malloc(sizeof(double)*N*N); //DU= D*U
+    TOTAL=(double*)malloc(sizeof(double)*N*N); //TOTAL= AAC + LBE + DUF
+    DUF=(double*)malloc(sizeof(double)*N*N); //DUF= (DU*F)*promedio B
+
     for(i=0;i<N;i++){       //Crea matrices
        for(j=0;j<N;j++){
            A[i*N+j]=1.0;
+	       At[i*N+j]=1.0;
            B[i*N+j]=1.0;
            C[i*N+j]=1.0;
            D[i*N+j]=1.0;
@@ -59,7 +69,9 @@ int main(int argc,char*argv[]){
     promedioU = 0;
     
     timetick = dwalltime();
-    #pragma omp parallel for reduction(+:promedioB,promedioL,promedioU)
+    #pragma omp parallel 
+    {
+        #pragma omp for collapse(2) reduction(+:promedioB,promedioL,promedioU)
         for(i=0;i<N;i++){   //Calcula los promedios
             for(j=0;j<N;j++){
                 promedioB+= B[i*N+j];
@@ -67,70 +79,88 @@ int main(int argc,char*argv[]){
                 promedioU+= U[i*N+j];
             }
         }
-    promedioB = promedioB / Total;
-    printf("%f\n",promedioB);
-    promedioL = promedioL / Total;
-    promedioU = promedioU / Total;
-    promedioL = promedioL * promedioU; //En promedioL queda el promedio de L por el de U.
-    AA=(double*)malloc(sizeof(double)*N*N); //AA=A*A
-    for(i=0;i<N;i++){
-        for(j=0;j<N;j++){
-            AA[i*N+j]=0;
-            for(k=0;k<N;k++){
-	            AA[i*N+j]= AA[i*N+j] + A[i*N+k]*A[k+j*N];
+        #pragma omp single
+        {
+            promedioB = promedioB / Total;
+            promedioL = promedioL / Total;
+            promedioU = promedioU / Total;
+            promedioL = promedioL * promedioU; //En promedioL queda el promedio de L por el de U.
+        }
+        #pragma omp for collapse(2)  private(temp)
+            for(i=0;i<N;i++){
+                for(j=i+1;j<N;j++){
+                        temp = At[i*N+j];
+                        At[i*N+j]= At[j*N+i];
+                        At[j*N+i]= temp;
+                }
+            } 
+        #pragma omp for collapse(2) private(k) 
+        for(i=0;i<N;i++){
+            for(j=0;j<N;j++){
+                AA[i*N+j]=0;
+                for(k=0;k<N;k++){
+                    AA[i*N+j]= AA[i*N+j] + A[i*N+k]*At[k+j*N];
+                }
             }
         }
-    }
-    AAC=(double*)malloc(sizeof(double)*N*N); //AAC=(AA*C)*promedio de L y U
-    for(i=0;i<N;i++){
-        for(j=0;j<N;j++){
-            AAC[i*N+j]=0;
-            for(k=0;k<N;k++){
-	            AAC[i*N+j]= AAC[i*N+j] + AA[i*N+k]*C[k+j*N]*promedioL;
+
+        #pragma omp for collapse(2) private(k)
+            for(i=0;i<N;i++){
+                for(j=0;j<N;j++){
+                    AAC[i*N+j]=0;
+                    for(k=0;k<N;k++){
+                        AAC[i*N+j]= AAC[i*N+j] + AA[i*N+k]*C[k+j*N]*promedioL;
+                    }
+                }
             }
-        }
-    }
-    LB=(double*)malloc(sizeof(double)*N*N); //LB= L*B
-    for(i=0;i<N;i++){
-        for(j=0;j<N;j++){
-            LB[i*N+j]=0;
-            for(k=0;k<=j;k++){
-	            LB[i*N+j]= LB[i*N+j] + B[i*N+k]*L[k+j*N];
+
+        #pragma omp for collapse(2) private(k)
+            for(i=0;i<N;i++){
+                for(j=0;j<N;j++){
+                    LB[i*N+j]=0;
+                    for(k=0;k<=j;k++){
+                        LB[i*N+j]= LB[i*N+j] + B[i*N+k]*L[k+j*N];
+                    }
+                }
+            } 
+        
+
+        #pragma omp for collapse(2) private(k)
+            for(i=0;i<N;i++){
+                for(j=0;j<N;j++){
+                    LBE[i*N+j]=0;
+                    for(k=0;k<N;k++){
+                        LBE[i*N+j]= LBE[i*N+j] + LB[i*N+k]*E[k+j*N]*promedioB;
+                    }
+                }
             }
-        }
-    }
-    LBE=(double*)malloc(sizeof(double)*N*N); //LBE= (LB*E)*promedio B
-    for(i=0;i<N;i++){
-        for(j=0;j<N;j++){
-            LBE[i*N+j]=0;
-            for(k=0;k<N;k++){
-	            LBE[i*N+j]= LBE[i*N+j] + LB[i*N+k]*E[k+j*N]*promedioB;
+
+        #pragma omp for collapse(2) private(k)
+            for(i=0;i<N;i++){
+                for(j=0;j<N;j++){
+                    DU[i*N+j]=0;
+                    for(k=j;k<N;k++){
+                        DU[i*N+j]= DU[i*N+j] + D[i*N+k]*U[k+j*N];
+                    }
+                }
             }
-        }
-    }
-    DU=(double*)malloc(sizeof(double)*N*N); //DU= D*U
-    for(i=0;i<N;i++){
-        for(j=0;j<N;j++){
-            DU[i*N+j]=0;
-            for(k=j;k<N;k++){
-	            DU[i*N+j]= DU[i*N+j] + D[i*N+k]*U[k+j*N];
+        #pragma omp for collapse(2) private(k)
+            for(i=0;i<N;i++){
+                for(j=0;j<N;j++){
+                    DUF[i*N+j]=0;
+                    for(k=0;k<N;k++){
+                        DUF[i*N+j]= DUF[i*N+j] + DU[i*N+k]*U[k+j*N]*promedioB;
+                    }
+                }
             }
-        }
-    }
-    DUF=(double*)malloc(sizeof(double)*N*N); //DUF= (DU*F)*promedio B
-    for(i=0;i<N;i++){
-        for(j=0;j<N;j++){
-            DUF[i*N+j]=0;
-            for(k=0;k<N;k++){
-	            DUF[i*N+j]= DUF[i*N+j] + DU[i*N+k]*U[k+j*N]*promedioB;
+    
+        #pragma omp for collapse(2) 
+            for(i=0;i<N;i++){
+                for(j=0;j<N;j++)
+                TOTAL[i*N+j]= AAC[i*N+j] + LBE[i*N+j] + DUF[i*N+j];
             }
-        }
     }
-    TOTAL=(double*)malloc(sizeof(double)*N*N); //TOTAL= AAC + LBE + DUF
-    for(i=0;i<N;i++){
-        for(j=0;j<N;j++)
-        TOTAL[i*N+j]= AAC[i*N+j] + LBE[i*N+j] + DUF[i*N+j];
-    }
+    
 
     printf("Tiempo en segundos %f \n", dwalltime() - timetick);
 
