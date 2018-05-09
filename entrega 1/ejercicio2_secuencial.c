@@ -12,7 +12,7 @@ double dwalltime()
   return sec;
 }
 
-double *A, *B, *C, *D, *E, *F, *L, *U, *AA, *AAC, *LB, *LBE, *DU, *DUF, *TOTAL;
+double *A, *At, *B, *C, *D, *E, *F, *L, *U, *AA, *AAC, *LB, *LBE, *DU, *DUF, *TOTAL;
 
 int main(int argc,char*argv[]){
     if (argc < 2){
@@ -20,10 +20,11 @@ int main(int argc,char*argv[]){
         return 0;
     }
     int i, j, k;
-    double promedioB, promedioU, promedioL, timetick;
+    double promedioB, promedioU, promedioL, timetick, temp;
     unsigned long N = atol(argv[1]);
     unsigned long Total = N*N;
     A=(double*)malloc(sizeof(double)*N*N);
+    At=(double*)malloc(sizeof(double)*N*N);
     B=(double*)malloc(sizeof(double)*N*N);
     C=(double*)malloc(sizeof(double)*N*N);
     D=(double*)malloc(sizeof(double)*N*N);
@@ -34,6 +35,7 @@ int main(int argc,char*argv[]){
     for(i=0;i<N;i++){       //Crea matrices
        for(j=0;j<N;j++){
            A[i*N+j]=1.0;
+	       At[i*N+j]=1.0;
            B[i*N+j]=1.0;
            C[i*N+j]=1.0;
            D[i*N+j]=1.0;
@@ -68,12 +70,20 @@ int main(int argc,char*argv[]){
     promedioL = promedioL / Total;
     promedioU = promedioU / Total;
     promedioL = promedioL * promedioU; //En promedioL queda el promedio de L por el de U.
+    //Genera matriz transpuesta
+    for(i=0;i<N;i++){
+	   for(j=i+1;j<N;j++){
+			temp = At[i*N+j];
+			At[i*N+j]= At[j*N+i];
+			At[j*N+i]= temp;
+	   }
+	} 
     AA=(double*)malloc(sizeof(double)*N*N); //AA=A*A
     for(i=0;i<N;i++){
         for(j=0;j<N;j++){
             AA[i*N+j]=0;
             for(k=0;k<N;k++){
-	            AA[i*N+j]= AA[i*N+j] + A[i*N+k]*A[k+j*N];
+	            AA[i*N+j]= AA[i*N+j] + A[i*N+k]*At[k+j*N];
             }
         }
     }
