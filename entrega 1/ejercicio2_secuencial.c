@@ -20,11 +20,12 @@ int main(int argc,char*argv[]){
         return 0;
     }
     int i, j, k;
+    int check = 1;
     double promedioB, promedioU, promedioL, timetick, temp;
     unsigned long N = atol(argv[1]);
     unsigned long Total = N*N;
     A=(double*)malloc(sizeof(double)*N*N);
-    //At=(double*)malloc(sizeof(double)*N*N);
+    At=(double*)malloc(sizeof(double)*N*N);
     B=(double*)malloc(sizeof(double)*N*N);
     C=(double*)malloc(sizeof(double)*N*N);
     D=(double*)malloc(sizeof(double)*N*N);
@@ -35,7 +36,7 @@ int main(int argc,char*argv[]){
     for(i=0;i<N;i++){       //Crea matrices
        for(j=0;j<N;j++){
            A[i*N+j]=1.0;
-	       //At[i*N+j]=1.0;
+	       At[i*N+j]=1.0;
            B[i*N+j]=1.0;
            C[i*N+j]=1.0;
            D[i*N+j]=1.0;
@@ -71,19 +72,19 @@ int main(int argc,char*argv[]){
     promedioU = promedioU / Total;
     promedioL = promedioL * promedioU; //En promedioL queda el promedio de L por el de U.
     //Genera matriz transpuesta
-    /* for(i=0;i<N;i++){
-	   for(j=i+1;j<N;j++){
+    for(i=0;i<N;i++){
+	   for(j=0;j<N;j++){
 			temp = At[i*N+j];
 			At[i*N+j]= At[j*N+i];
 			At[j*N+i]= temp;
 	   }
-	}  */
+	}  
     AA=(double*)malloc(sizeof(double)*N*N); //AA=A*At
     for(i=0;i<N;i++){
         for(j=0;j<N;j++){
             AA[i*N+j]=0;
             for(k=0;k<N;k++){
-	            AA[i*N+j]= AA[i*N+j] + A[i*N+k]*A[k+j*N];
+	            AA[i*N+j]= AA[i*N+j] + A[i*N+k]*At[k+j*N];
             }
         }
     }
@@ -128,7 +129,7 @@ int main(int argc,char*argv[]){
         for(j=0;j<N;j++){
             DUF[i*N+j]=0;
             for(k=0;k<N;k++){
-	            DUF[i*N+j]= DUF[i*N+j] + DU[i*N+k]*U[k+j*N]*promedioB;
+	            DUF[i*N+j]= DUF[i*N+j] + DU[i*N+k]*F[k+j*N]*promedioB;
             }
         }
     }
@@ -140,6 +141,18 @@ int main(int argc,char*argv[]){
 
     printf("Tiempo en segundos %f \n", dwalltime() - timetick);
 
+    double resultado = TOTAL[0];
+    for(i=0;i<N;i++){
+        for(j=0;j<N;j++){
+        check = check && (TOTAL[i*N+j]==resultado);
+        }
+    }
+
+    if(check){
+        printf("Multiplicacion de matriz correcta\n");
+    }else{
+        printf("Multiplicacion de matriz erroneo\n");
+    }
     
     free(A);
     free(B);

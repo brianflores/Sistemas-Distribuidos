@@ -21,6 +21,7 @@ int main(int argc,char*argv[]){
         return 0;
     }
     int i, j, k;
+    int check = 1;
     int numThreads = atol(argv[2]);
     omp_set_num_threads(numThreads);
     double promedioB, promedioU, promedioL, timetick, temp;
@@ -88,7 +89,7 @@ int main(int argc,char*argv[]){
         }
         #pragma omp for collapse(2)  private(temp)
             for(i=0;i<N;i++){
-                for(j=i+1;j<N;j++){
+                for(j=0;j<N;j++){
                         temp = At[i*N+j];
                         At[i*N+j]= At[j*N+i];
                         At[j*N+i]= temp;
@@ -149,7 +150,7 @@ int main(int argc,char*argv[]){
                 for(j=0;j<N;j++){
                     DUF[i*N+j]=0;
                     for(k=0;k<N;k++){
-                        DUF[i*N+j]= DUF[i*N+j] + DU[i*N+k]*U[k+j*N]*promedioB;
+                        DUF[i*N+j]= DUF[i*N+j] + DU[i*N+k]*F[k+j*N]*promedioB;
                     }
                 }
             }
@@ -163,7 +164,19 @@ int main(int argc,char*argv[]){
     
 
     printf("Tiempo en segundos %f \n", dwalltime() - timetick);
+    
+    double resultado = TOTAL[0];
+    for(i=0;i<N;i++){
+        for(j=0;j<N;j++){
+        check = check && (TOTAL[i*N+j]==resultado);
+        }
+    }
 
+    if(check){
+        printf("Multiplicacion de matriz correcta\n");
+    }else{
+        printf("Multiplicacion de matriz erroneo\n");
+    }
     
     free(A);
     free(B);
