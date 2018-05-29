@@ -9,6 +9,7 @@ CONSULTAS:
 -como calcular las metricas, donde empezar a tomar los tiempos
 -overhead (???)
 -se toman tiempos en los workers tambien?
+-preguntar como se hace bien el machine file
 */
 
 double dwalltime()
@@ -134,6 +135,8 @@ void root(int N, int cantProcesos){
     MPI_Gather(total, filas*N, MPI_DOUBLE, TOTAL, filas*N, MPI_DOUBLE, 0, MPI_COMM_WORLD); //Cada proceso envia su pedacito de matriz, las recibe el proceso root en TOTAL
     
     printf("Tiempo en segundos %f \n", dwalltime() - timetick);
+
+    int check = 1;
     double resultado = TOTAL[0];
     for(i=0;i<N;i++){
         for(j=0;j<N;j++){
@@ -237,7 +240,7 @@ void workers(int ID, int N, int cantProcesos){
     free(c);
     free(d);
     free(AB);
-    free(LC):
+    free(LC);
     free(DU);
     free(total);
 }
