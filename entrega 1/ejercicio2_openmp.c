@@ -87,7 +87,7 @@ int main(int argc,char*argv[]){
             promedioU = promedioU / Total;
             promedioL = promedioL * promedioU; //En promedioL queda el promedio de L por el de U.
         }
-        #pragma omp for collapse(2)  private(temp)
+        #pragma omp for collapse(2) private(temp)
             for(i=0;i<N;i++){
                 for(j=0;j<N;j++){
                         temp = At[i*N+j];
