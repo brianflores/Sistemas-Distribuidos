@@ -33,7 +33,7 @@ int main(int argc, char** argv) {
     }
     int N = atol(argv[1]);
     int ID, cantProcesos;
-    omp_set_num_threads(cantProcesos);
+    omp_set_num_threads(3);
     MPI_Init(&argc, &argv);
 	MPI_Comm_rank(MPI_COMM_WORLD, &ID);
 	MPI_Comm_size(MPI_COMM_WORLD, &cantProcesos);
@@ -93,24 +93,20 @@ void root(int N, int cantProcesos){
 
     promedioL = 0;
     promedioU = 0;
-    #pragma omp parallel 
-    {       
-        #pragma omp for collapse(2) reduction(+:promedioL,promedioU)
-        for(i=0;i<filas;i++){   //Calcula los promedios
-            for(j=0;j<N;j++){
-                promedioL+= L[i*N+j];
-                promedioU+= U[i*N+j];
-            }
+    #pragma omp parallel for collapse(2) reduction(+:promedioL,promedioU)
+    for(i=0;i<filas;i++){   //Calcula los promedios
+        for(j=0;j<N;j++){
+            promedioL+= L[i*N+j];
+            promedioU+= U[i*N+j];
         }
-        #pragma omp single
-        {
-            MPI_Allreduce(&promedioL, &resultadoL, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
-            MPI_Allreduce(&promedioU, &resultadoU, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
-            promedioL = resultadoL/(N*N);
-            promedioU = resultadoU/(N*N);
-            promedioL = promedioL*promedioU; //en promedioL queda el producto de ambos promedios
-        }
-
+    }
+    MPI_Allreduce(&promedioL, &resultadoL, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+    MPI_Allreduce(&promedioU, &resultadoU, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+    promedioL = resultadoL/(N*N);
+    promedioU = resultadoU/(N*N);
+    promedioL = promedioL*promedioU; //en promedioL queda el producto de ambos promedios
+	#pragma omp parallel
+	{
         #pragma omp for collapse(2) private(k) 
         for(i=0;i<filas;i++){   //AB = a*B
             for(j=0;j<N;j++){
@@ -203,24 +199,21 @@ void workers(int ID, int N, int cantProcesos){
     
     promedioL = 0;
     promedioU = 0;
-    #pragma omp parallel 
-    {       
-        #pragma omp for collapse(2) reduction(+:promedioL,promedioU)
-        for(i=0;i<filas;i++){   //Calcula los promedios
-            for(j=0;j<N;j++){
-                promedioL+= L[i*N+j];
-                promedioU+= U[i*N+j];
-            }
+       
+    #pragma omp parallel for collapse(2) reduction(+:promedioL,promedioU)
+    for(i=0;i<filas;i++){   //Calcula los promedios
+        for(j=0;j<N;j++){
+            promedioL+= L[i*N+j];
+            promedioU+= U[i*N+j];
         }
-        #pragma omp single
-        {
-            MPI_Allreduce(&promedioL, &resultadoL, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
-            MPI_Allreduce(&promedioU, &resultadoU, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
-            promedioL = resultadoL/(N*N);
-            promedioU = resultadoU/(N*N);
-            promedioL = promedioL*promedioU; //en promedioL queda el producto de ambos promedios
-        }
-
+    }
+    MPI_Allreduce(&promedioL, &resultadoL, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+    MPI_Allreduce(&promedioU, &resultadoU, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+    promedioL = resultadoL/(N*N);
+    promedioU = resultadoU/(N*N);
+    promedioL = promedioL*promedioU; //en promedioL queda el producto de ambos promedios
+	#pragma omp parallel
+ 	{
         #pragma omp for collapse(2) private(k) 
         for(i=0;i<filas;i++){   //AB = a*B
             for(j=0;j<N;j++){
