@@ -3,20 +3,10 @@
 #include <stdio.h>
 #include <sys/time.h>
 
-/*
-CONSULTAS:
--ver si no es mejor mover todo lo que se repite en root/workers a una funcion (por ejemplo las multiplicaciones)
--como calcular las metricas, donde empezar a tomar los tiempos
--overhead (???)
--se toman tiempos en los workers tambien?
--preguntar como se hace bien el machine file
-*/
 
-double dwalltime()
-{
+double dwalltime(){
   double sec;
   struct timeval tv;
-
   gettimeofday(&tv,NULL);
   sec = tv.tv_sec + tv.tv_usec/1000000.0;
   return sec;
@@ -43,7 +33,7 @@ int main(int argc, char** argv) {
 
 void root(int N, int cantProcesos){
     double *A, *B, *C, *D, *L, *U, *a, *c, *d, *AB, *LC, *DU, *TOTAL, *total;
-    double promedioL, promedioU, resultadoL, resultadoU, timetick;
+    double promedioL, promedioU, resultadoL, resultadoU, timetick, timetick2, timetick3;
     int i,j,k;
     int filas = N/cantProcesos; //filas por proceso
     A=(double*)malloc(sizeof(double)*N*N);
@@ -78,7 +68,7 @@ void root(int N, int cantProcesos){
            }
        }
     }
-    timetick = dwalltime(); //Esto va aca?????? o despues de dividir todo
+    timetick = dwalltime();
 
     MPI_Scatter(A, N*filas, MPI_DOUBLE, a, N*filas, MPI_DOUBLE, 0, MPI_COMM_WORLD);
     MPI_Bcast(B,N*N, MPI_DOUBLE,0,MPI_COMM_WORLD);
@@ -87,6 +77,8 @@ void root(int N, int cantProcesos){
     MPI_Scatter(D, N*filas, MPI_DOUBLE, d, N*filas, MPI_DOUBLE, 0, MPI_COMM_WORLD);
     MPI_Bcast(U,N*N, MPI_DOUBLE,0,MPI_COMM_WORLD);
     MPI_Scatter(TOTAL, N*filas, MPI_DOUBLE, total, N*filas, MPI_DOUBLE, 0, MPI_COMM_WORLD);
+   
+    printf("Tiempo en segundos de las comunicaciones 1 %f \n", dwalltime() - timetick);
 
     promedioL = 0;
     promedioU = 0;
@@ -96,8 +88,14 @@ void root(int N, int cantProcesos){
            promedioU+= U[i*N+j];
        }
     }
+	
+    timetick2 = dwalltime();
+	
     MPI_Allreduce(&promedioL, &resultadoL, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
     MPI_Allreduce(&promedioU, &resultadoU, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+	
+     printf("Tiempo en segundos de las comunicaciones 2 %f \n", dwalltime() - timetick2);
+	
     promedioL = resultadoL/(N*N);
     promedioU = resultadoU/(N*N);
     promedioL = promedioL*promedioU; //en promedioL queda el producto de ambos promedios
@@ -132,7 +130,12 @@ void root(int N, int cantProcesos){
 	        total[i*N+j]= (AB[i*N+j] + LC[i*N+j] + DU[i*N+j])*promedioL;
        }
     }
+	
+    timetick3 = dwalltime();
+	
     MPI_Gather(total, filas*N, MPI_DOUBLE, TOTAL, filas*N, MPI_DOUBLE, 0, MPI_COMM_WORLD); //Cada proceso envia su pedacito de matriz, las recibe el proceso root en TOTAL
+   
+    printf("Tiempo en segundos de las comunicaciones 3 %f \n", dwalltime() - timetick3);
     
     printf("Tiempo en segundos %f \n", dwalltime() - timetick);
 
