@@ -4,14 +4,6 @@
 #include <stdio.h>
 #include <sys/time.h>
 
-/*
-CONSULTAS:
--ver si no es mejor mover todo lo que se repite en root/workers a una funcion (por ejemplo las multiplicaciones)
--como calcular las metricas, donde empezar a tomar los tiempos
--overhead (???)
--se toman tiempos en los workers tambien?
--preguntar como se hace bien el machine file
-*/
 
 double dwalltime()
 {
@@ -33,7 +25,7 @@ int main(int argc, char** argv) {
     }
     int N = atol(argv[1]);
     int ID, cantProcesos;
-    omp_set_num_threads(3);
+    omp_set_num_threads(1);
     MPI_Init(&argc, &argv);
 	MPI_Comm_rank(MPI_COMM_WORLD, &ID);
 	MPI_Comm_size(MPI_COMM_WORLD, &cantProcesos);
@@ -44,8 +36,8 @@ int main(int argc, char** argv) {
 }
 
 void root(int N, int cantProcesos){
-    double *A, *B, *C, *D, *L, *U, *a, *c, *d, *AB, *LC, *DU, *TOTAL, *total;
-    double promedioL, promedioU, resultadoL, resultadoU, timetick;
+    double *A, *B, *C, *D, *L, *U, *a, *l, *d, *AB, *LC, *DU, *TOTAL, *total;
+    double promedioL, promedioU, resultadoL, resultadoU, timetick, timetick2, timetick3;
     int i,j,k;
     int filas = N/cantProcesos; //filas por proceso
     A=(double*)malloc(sizeof(double)*N*N);
@@ -55,7 +47,7 @@ void root(int N, int cantProcesos){
     L=(double*)malloc(sizeof(double)*N*N);
     U=(double*)malloc(sizeof(double)*N*N);
     a=(double*)malloc(sizeof(double)*filas*N);
-    c=(double*)malloc(sizeof(double)*filas*N);
+    l=(double*)malloc(sizeof(double)*filas*N);
     d=(double*)malloc(sizeof(double)*filas*N);
     AB=(double*)malloc(sizeof(double)*filas*N);
     LC=(double*)malloc(sizeof(double)*filas*N);
@@ -81,27 +73,35 @@ void root(int N, int cantProcesos){
             }
         }
     }
-    timetick = dwalltime(); //Esto va aca?????? o despues de dividir todo
+    timetick = dwalltime();
 
     MPI_Scatter(A, N*filas, MPI_DOUBLE, a, N*filas, MPI_DOUBLE, 0, MPI_COMM_WORLD);
     MPI_Bcast(B,N*N, MPI_DOUBLE,0,MPI_COMM_WORLD);
-    MPI_Scatter(C, N*filas, MPI_DOUBLE, c, N*filas, MPI_DOUBLE, 0, MPI_COMM_WORLD);
-    MPI_Bcast(L,N*N, MPI_DOUBLE,0,MPI_COMM_WORLD);
+    MPI_Scatter(L, N*filas, MPI_DOUBLE, l, N*filas, MPI_DOUBLE, 0, MPI_COMM_WORLD);
+    MPI_Bcast(C,N*N, MPI_DOUBLE,0,MPI_COMM_WORLD);
     MPI_Scatter(D, N*filas, MPI_DOUBLE, d, N*filas, MPI_DOUBLE, 0, MPI_COMM_WORLD);
     MPI_Bcast(U,N*N, MPI_DOUBLE,0,MPI_COMM_WORLD);
     MPI_Scatter(TOTAL, N*filas, MPI_DOUBLE, total, N*filas, MPI_DOUBLE, 0, MPI_COMM_WORLD);
+
+
+    printf("Tiempo en segundos de las comunicaciones 1: %f \n", dwalltime() - timetick);
 
     promedioL = 0;
     promedioU = 0;
     #pragma omp parallel for collapse(2) reduction(+:promedioL,promedioU)
     for(i=0;i<filas;i++){   //Calcula los promedios
         for(j=0;j<N;j++){
-            promedioL+= L[i*N+j];
+            promedioL+= l[i*N+j];
             promedioU+= U[i*N+j];
         }
     }
+    timetick2 = dwalltime();
+
     MPI_Allreduce(&promedioL, &resultadoL, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
     MPI_Allreduce(&promedioU, &resultadoU, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+
+    printf("Tiempo en segundos de las comunicaciones 2: %f \n", dwalltime() - timetick2);
+
     promedioL = resultadoL/(N*N);
     promedioU = resultadoU/(N*N);
     promedioL = promedioL*promedioU; //en promedioL queda el producto de ambos promedios
@@ -117,11 +117,11 @@ void root(int N, int cantProcesos){
             }
         }
         #pragma omp for collapse(2) private(k) 
-        for(i=0;i<filas;i++){   //LC = c*L
+        for(i=0;i<filas;i++){   //LC = l*C
             for(j=0;j<N;j++){
                     LC[i*N+j]=0;
                     for(k=0;k<N;k++){
-                        LC[i*N+j]= LC[i*N+j] + c[i*N+k]*L[k+j*N];
+                        LC[i*N+j]= LC[i*N+j] + l[i*N+k]*C[k+j*N];
                     }
             }
         }
@@ -129,7 +129,7 @@ void root(int N, int cantProcesos){
         for(i=0;i<filas;i++){   //DU = d*U
             for(j=0;j<N;j++){
                     DU[i*N+j]=0;
-                    for(k=0;k<N;k++){
+                    for(k=j;k<N;k++){
                         DU[i*N+j]= DU[i*N+j] + d[i*N+k]*U[k+j*N];
                     }
             }
@@ -141,10 +141,16 @@ void root(int N, int cantProcesos){
             }
         }
     }
+
+    timetick3 = dwalltime();
+	
     MPI_Gather(total, filas*N, MPI_DOUBLE, TOTAL, filas*N, MPI_DOUBLE, 0, MPI_COMM_WORLD); //Cada proceso envia su pedacito de matriz, las recibe el proceso root en TOTAL    
+    
+    printf("Tiempo en segundos de las comunicaciones 3: %f \n", dwalltime() - timetick3);
+    
     printf("Tiempo en segundos %f \n", dwalltime() - timetick);
 
-    int check = 1;
+    /*int check = 1;
     double resultado = TOTAL[0];
     for(i=0;i<N;i++){
         for(j=0;j<N;j++){
@@ -156,7 +162,7 @@ void root(int N, int cantProcesos){
         printf("Multiplicacion de matriz correcta\n");
     }else{
         printf("Multiplicacion de matriz erroneo\n");
-    }
+    }*/
     free(A);
     free(B);
     free(C);
@@ -164,7 +170,7 @@ void root(int N, int cantProcesos){
     free(L);
     free(U);
     free(a);
-    free(c);
+    free(l);
     free(d);
     free(AB);
     free(LC);
@@ -174,15 +180,15 @@ void root(int N, int cantProcesos){
 }
 
 void workers(int ID, int N, int cantProcesos){
-    double *A, *B, *C, *D, *L, *U, *a, *c, *d, *AB, *LC, *DU, *TOTAL, *total;
+    double *A, *B, *C, *D, *L, *U, *a, *l, *d, *AB, *LC, *DU, *TOTAL, *total;
     double promedioL, promedioU, resultadoL, resultadoU, timetick;
     int i,j,k;
     int filas = N/cantProcesos; //filas por proceso
     B=(double*)malloc(sizeof(double)*N*N);
-    L=(double*)malloc(sizeof(double)*N*N);
+    C=(double*)malloc(sizeof(double)*N*N);
     U=(double*)malloc(sizeof(double)*N*N);
     a=(double*)malloc(sizeof(double)*filas*N);
-    c=(double*)malloc(sizeof(double)*filas*N);
+    l=(double*)malloc(sizeof(double)*filas*N);
     d=(double*)malloc(sizeof(double)*filas*N);
     AB=(double*)malloc(sizeof(double)*filas*N);
     LC=(double*)malloc(sizeof(double)*filas*N);
@@ -191,19 +197,21 @@ void workers(int ID, int N, int cantProcesos){
 
     MPI_Scatter(A, N*filas, MPI_DOUBLE, a, N*filas, MPI_DOUBLE, 0, MPI_COMM_WORLD);
     MPI_Bcast(B,N*N, MPI_DOUBLE,0,MPI_COMM_WORLD);
-    MPI_Scatter(C, N*filas, MPI_DOUBLE, c, N*filas, MPI_DOUBLE, 0, MPI_COMM_WORLD);
-    MPI_Bcast(L,N*N, MPI_DOUBLE,0,MPI_COMM_WORLD);
+    MPI_Scatter(L, N*filas, MPI_DOUBLE, l, N*filas, MPI_DOUBLE, 0, MPI_COMM_WORLD);
+    MPI_Bcast(C,N*N, MPI_DOUBLE,0,MPI_COMM_WORLD);
     MPI_Scatter(D, N*filas, MPI_DOUBLE, d, N*filas, MPI_DOUBLE, 0, MPI_COMM_WORLD);
     MPI_Bcast(U,N*N, MPI_DOUBLE,0,MPI_COMM_WORLD);
     MPI_Scatter(TOTAL, N*filas, MPI_DOUBLE, total, N*filas, MPI_DOUBLE, 0, MPI_COMM_WORLD);
     
+    timetick = dwalltime();
+
     promedioL = 0;
     promedioU = 0;
        
     #pragma omp parallel for collapse(2) reduction(+:promedioL,promedioU)
     for(i=0;i<filas;i++){   //Calcula los promedios
         for(j=0;j<N;j++){
-            promedioL+= L[i*N+j];
+            promedioL+= l[i*N+j];
             promedioU+= U[i*N+j];
         }
     }
@@ -224,11 +232,11 @@ void workers(int ID, int N, int cantProcesos){
             }
         }
         #pragma omp for collapse(2) private(k) 
-        for(i=0;i<filas;i++){   //LC = c*L
+        for(i=0;i<filas;i++){   //LC = l*C
             for(j=0;j<N;j++){
                     LC[i*N+j]=0;
                     for(k=0;k<N;k++){
-                        LC[i*N+j]= LC[i*N+j] + c[i*N+k]*L[k+j*N];
+                        LC[i*N+j]= LC[i*N+j] + l[i*N+k]*C[k+j*N];
                     }
             }
         }
@@ -236,7 +244,7 @@ void workers(int ID, int N, int cantProcesos){
         for(i=0;i<filas;i++){   //DU = d*U
             for(j=0;j<N;j++){
                     DU[i*N+j]=0;
-                    for(k=0;k<N;k++){
+                    for(k=j;k<N;k++){
                         DU[i*N+j]= DU[i*N+j] + d[i*N+k]*U[k+j*N];
                     }
             }
@@ -248,12 +256,15 @@ void workers(int ID, int N, int cantProcesos){
             }
         }
     }
+
+    printf("Tiempo en segundos del worker %d:  %f \n", ID, dwalltime() - timetick);
+
     MPI_Gather(total, filas*N, MPI_DOUBLE, TOTAL, filas*N, MPI_DOUBLE, 0, MPI_COMM_WORLD); //Cada proceso envia su pedacito de matriz, las recibe el proceso root en TOTAL
     free(B);
-    free(L);
+    free(C);
     free(U);
     free(a);
-    free(c);
+    free(l);
     free(d);
     free(AB);
     free(LC);
