@@ -14,8 +14,12 @@ double dwalltime(){
 
 /*
 Consultas:
-Hay que almacenar solo los elementos no nulos de la matriz U? (triangular superior almacenada por filas)
-Como calculo eso para hacer el malloc?
+Como hacer el promedio de U? que cada proceso lo calcule recorriendo todo? o que lo haga el root y broadcastee el resultado
+que onda el check!? los valores que dan no son todos iguales (chequeado con wolfram), con matrices de 4x4 da
+9.000000 10.000000 11.000000 12.000000
+8.000000 9.000000 10.000000 11.000000
+7.000000 8.000000 9.000000 10.000000
+6.000000 7.000000 8.000000 9.000000
 */
 
 
@@ -43,12 +47,13 @@ void root(int N, int cantProcesos){
     double promedioL, promedioU, resultadoL, resultadoU, timetick, timetick2, timetick3;
     int i,j,k;
     int filas = N/cantProcesos; //filas por proceso
+    int elementosU = (N*N)-((N*(N-1))/2);
     A=(double*)malloc(sizeof(double)*N*N);
     B=(double*)malloc(sizeof(double)*N*N);
     C=(double*)malloc(sizeof(double)*N*N);
     D=(double*)malloc(sizeof(double)*N*N);
     L=(double*)malloc(sizeof(double)*N*N);
-    U=(double*)malloc(sizeof(double)*N*N);
+    U=(double*)malloc(sizeof(double)*elementosU);
     a=(double*)malloc(sizeof(double)*filas*N);
     l=(double*)malloc(sizeof(double)*filas*N);
     d=(double*)malloc(sizeof(double)*filas*N);
@@ -65,16 +70,17 @@ void root(int N, int cantProcesos){
            D[i*N+j]=1.0;
            if(i==j){
                L[i*N+j]= 1.0;
-               U[i*N+j]= 1.0;
+               //U[i*N+j]= 1.0;
            } else if(i>j){
-               U[i*N+j]= 1.0;
+               //U[i*N+j]= 1.0;
                L[i*N+j]= 0.0;
            } else {
-               U[i*N+j]= 0.0;
+               //U[i*N+j]= 0.0;
                L[i*N+j]= 1.0;
            }
        }
     }
+    for(i=0; i<elementosU; i++) U[i] = 1.0;
     timetick = dwalltime();
 
     MPI_Scatter(A, N*filas, MPI_DOUBLE, a, N*filas, MPI_DOUBLE, 0, MPI_COMM_WORLD);
@@ -82,7 +88,7 @@ void root(int N, int cantProcesos){
     MPI_Scatter(L, N*filas, MPI_DOUBLE, l, N*filas, MPI_DOUBLE, 0, MPI_COMM_WORLD);
     MPI_Bcast(C,N*N, MPI_DOUBLE,0,MPI_COMM_WORLD);
     MPI_Scatter(D, N*filas, MPI_DOUBLE, d, N*filas, MPI_DOUBLE, 0, MPI_COMM_WORLD);
-    MPI_Bcast(U,N*N, MPI_DOUBLE,0,MPI_COMM_WORLD);
+    MPI_Bcast(U,elementosU, MPI_DOUBLE,0,MPI_COMM_WORLD);
     MPI_Scatter(TOTAL, N*filas, MPI_DOUBLE, total, N*filas, MPI_DOUBLE, 0, MPI_COMM_WORLD);
    
     printf("Tiempo en segundos de las comunicaciones 1: %f \n", dwalltime() - timetick);
@@ -92,19 +98,18 @@ void root(int N, int cantProcesos){
     for(i=0;i<filas;i++){   //Calcula los promedios
        for(j=0;j<N;j++){
            promedioL+= l[i*N+j];
-           promedioU+= U[i*N+j];
        }
     }
-	
+    for(i=0; i<elementosU; i++) promedioU+= U[i];
     timetick2 = dwalltime();
 	
     MPI_Allreduce(&promedioL, &resultadoL, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
-    MPI_Allreduce(&promedioU, &resultadoU, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+    //MPI_Allreduce(&promedioU, &resultadoU, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
 	
     printf("Tiempo en segundos de las comunicaciones 2: %f \n", dwalltime() - timetick2);
 	
     promedioL = resultadoL/(N*N);
-    promedioU = resultadoU/(N*N);
+    promedioU = promedioU/(N*N);
     promedioL = promedioL*promedioU; //en promedioL queda el producto de ambos promedios
 
 
@@ -119,7 +124,7 @@ void root(int N, int cantProcesos){
     for(i=0;i<filas;i++){   //LC = l*C
        for(j=0;j<N;j++){
             LC[i*N+j]=0;
-            for(k=0;k<N;k++){
+            for(k=i;k<N;k++){
 	            LC[i*N+j]= LC[i*N+j] + l[i*N+k]*C[k+j*N];
             }
        }
@@ -127,8 +132,8 @@ void root(int N, int cantProcesos){
     for(i=0;i<filas;i++){   //DU = d*U
        for(j=0;j<N;j++){
             DU[i*N+j]=0;
-            for(k=j;k<N;k++){
-	            DU[i*N+j]= DU[i*N+j] + d[i*N+k]*U[k+j*N];
+            for(k=0;k<=j;k++){
+	            DU[i*N+j]= DU[i*N+j] + d[i*N+k]*U[k+j*(j+1)/2];
             }
        }
     }
@@ -182,9 +187,10 @@ void workers(int ID, int N, int cantProcesos){
     double promedioL, promedioU, resultadoL, resultadoU, timetick;
     int i,j,k;
     int filas = N/cantProcesos; //filas por proceso
+    int elementosU = (N*N)-((N*(N-1))/2);
     B=(double*)malloc(sizeof(double)*N*N);
     C=(double*)malloc(sizeof(double)*N*N);
-    U=(double*)malloc(sizeof(double)*N*N);
+    U=(double*)malloc(sizeof(double)*elementosU);
     a=(double*)malloc(sizeof(double)*filas*N);
     l=(double*)malloc(sizeof(double)*filas*N);
     d=(double*)malloc(sizeof(double)*filas*N);
@@ -198,7 +204,7 @@ void workers(int ID, int N, int cantProcesos){
     MPI_Scatter(L, N*filas, MPI_DOUBLE, l, N*filas, MPI_DOUBLE, 0, MPI_COMM_WORLD);
     MPI_Bcast(C,N*N, MPI_DOUBLE,0,MPI_COMM_WORLD);
     MPI_Scatter(D, N*filas, MPI_DOUBLE, d, N*filas, MPI_DOUBLE, 0, MPI_COMM_WORLD);
-    MPI_Bcast(U,N*N, MPI_DOUBLE,0,MPI_COMM_WORLD);
+    MPI_Bcast(U,elementosU, MPI_DOUBLE,0,MPI_COMM_WORLD);
     MPI_Scatter(TOTAL, N*filas, MPI_DOUBLE, total, N*filas, MPI_DOUBLE, 0, MPI_COMM_WORLD);
     
     timetick = dwalltime();
@@ -208,13 +214,14 @@ void workers(int ID, int N, int cantProcesos){
     for(i=0;i<filas;i++){   //Calcula los promedios
        for(j=0;j<N;j++){
            promedioL+= l[i*N+j];
-           promedioU+= U[i*N+j];
+           //promedioU+= U[i*N+j];
        }
     }
+    for(i=0;i<elementosU;i++) promedioU += U[i];
     MPI_Allreduce(&promedioL, &resultadoL, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
-    MPI_Allreduce(&promedioU, &resultadoU, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+    //MPI_Allreduce(&promedioU, &resultadoU, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
     promedioL = resultadoL/(N*N);
-    promedioU = resultadoU/(N*N);
+    promedioU = promedioU/(N*N);
     promedioL = promedioL*promedioU; //en promedioL queda el producto de ambos promedios
 
     for(i=0;i<filas;i++){   //AB = a*B
@@ -228,7 +235,7 @@ void workers(int ID, int N, int cantProcesos){
     for(i=0;i<filas;i++){   //LC = l*C
        for(j=0;j<N;j++){
             LC[i*N+j]=0;
-            for(k=0;k<N;k++){
+            for(k=i;k<N;k++){
 	            LC[i*N+j]= LC[i*N+j] + l[i*N+k]*C[k+j*N];
             }
        }
@@ -236,8 +243,8 @@ void workers(int ID, int N, int cantProcesos){
     for(i=0;i<filas;i++){   //DU = d*U
        for(j=0;j<N;j++){
             DU[i*N+j]=0;
-            for(k=j;k<N;k++){
-	            DU[i*N+j]= DU[i*N+j] + d[i*N+k]*U[k+j*N];
+            for(k=0;k<=j;k++){
+	            DU[i*N+j]= DU[i*N+j] + d[i*N+k]*U[k+j*(j+1)/2];
             }
        }
     }

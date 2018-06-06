@@ -1,0 +1,15 @@
+Compilar todo en la compu de la catedra:
+
+ejercicio 1 secuencial: 
+gcc -o ejercicio1secuencial ejercicio1_secuencial.c
+
+ejercicio 1 mpi:
+mpicc -o ejercicio1mpi ejercicio1_mpi.c
+
+correrlo:
+en una maquina: mpicc -np 4 ejercicio1mpi 512
+dos maquinas: mpicc -np 4 --machine-file maquinasej1_4procesos_2maquinas ejercicio1mpi 512
+8 procesos: mpicc -np 4 --machine-file maquinasej1_8procesos ejercicio1mpi 512
+
+ejercicio 2:  mpicc -fopenmp -o ejercicio2 ejercicio2.c
+mpicc -np 2 --machine-file maquinas_ej2 ejercicio2 512

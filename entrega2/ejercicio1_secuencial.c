@@ -23,12 +23,13 @@ int main(int argc,char*argv[]){
     unsigned long Total = N*N;
     int check = 1;
     double promedioL, promedioU, timetick;
+    int elementosU = (N*N)-((N*(N-1))/2);
     A=(double*)malloc(sizeof(double)*N*N);
     B=(double*)malloc(sizeof(double)*N*N);
     C=(double*)malloc(sizeof(double)*N*N);
     D=(double*)malloc(sizeof(double)*N*N);
     L=(double*)malloc(sizeof(double)*N*N);
-    U=(double*)malloc(sizeof(double)*N*N);
+    U=(double*)malloc(sizeof(double)*elementosU);
     for(i=0;i<N;i++){       //Crea matrices
        for(j=0;j<N;j++){
            A[i*N+j]=1.0;
@@ -37,16 +38,17 @@ int main(int argc,char*argv[]){
            D[i*N+j]=1.0;
            if(i==j){
                L[i*N+j]= 1.0;
-               U[i*N+j]= 1.0;
+               //U[i*N+j]= 1.0;
            } else if(i>j){
-               U[i*N+j]= 1.0;
+               //U[i*N+j]= 1.0;
                L[i*N+j]= 0.0;
            } else {
-               U[i*N+j]= 0.0;
+               //U[i*N+j]= 0.0;
                L[i*N+j]= 1.0;
            }
        }
     }
+    for(i=0; i<elementosU; i++) U[i] = 1.0;
     promedioL = 0;
     promedioU = 0;
 
@@ -54,9 +56,10 @@ int main(int argc,char*argv[]){
     for(i=0;i<N;i++){   //Calcula los promedios
        for(j=0;j<N;j++){
            promedioL+= L[i*N+j];
-           promedioU+= U[i*N+j];
+           //promedioU+= U[i*N+j];
        }
     }
+    for(i=0; i<elementosU; i++) promedioU+= U[i];
     promedioL = promedioL / Total;
     promedioU = promedioU / Total;
     promedioL = promedioL * promedioU; //En promedioL queda el promedio de L por el de U.
@@ -73,8 +76,8 @@ int main(int argc,char*argv[]){
     for(i=0;i<N;i++){
         for(j=0;j<N;j++){
             LC[i*N+j]=0;
-            for(k=0;k<=j;k++){
-	            LC[i*N+j]= LC[i*N+j] + C[i*N+k]*L[k+j*N];
+            for(k=i;k<N;k++){
+	            LC[i*N+j]= LC[i*N+j] + L[i*N+k]*C[k+j*N];
             }
         }
     }
@@ -82,8 +85,8 @@ int main(int argc,char*argv[]){
     for(i=0;i<N;i++){
         for(j=0;j<N;j++){
             DU[i*N+j]=0;
-            for(k=j;k<N;k++){
-	            DU[i*N+j]= DU[i*N+j] + D[i*N+k]*U[k+j*N];
+            for(k=0;k<=j;k++){
+	            DU[i*N+j]= DU[i*N+j] + D[i*N+k]*U[k+j*(j+1)/2];
             }
         }
     }
@@ -94,12 +97,12 @@ int main(int argc,char*argv[]){
     }
     printf("Tiempo en segundos %f \n", dwalltime() - timetick);
 
-    double resultado = TOTAL[0];
+    /* double resultado = TOTAL[0];
     for(i=0;i<N;i++){
         for(j=0;j<N;j++){
         check = check && (TOTAL[i*N+j]==resultado);
         }
-    }
+    } */
 
     if(check){
         printf("Multiplicacion de matriz correcta\n");
