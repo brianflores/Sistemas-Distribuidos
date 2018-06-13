@@ -39,8 +39,10 @@ void root(int N, int cantProcesos){
     double *A, *B, *C, *D, *L, *U, *a, *l, *d, *AB, *LC, *DU, *TOTAL, *total;
     double promedioL, promedioU, resultadoL, resultadoU, timetick, timetick2, timetick3;
     int i,j,k;
+	int check = 1;
     int filas = N/cantProcesos; //filas por proceso
     int elementosU = (N*N)-((N*(N-1))/2);
+	int elementosUporProceso = elementosU/cantProcesos;
     A=(double*)malloc(sizeof(double)*N*N);
     B=(double*)malloc(sizeof(double)*N*N);
     C=(double*)malloc(sizeof(double)*N*N);
@@ -98,16 +100,16 @@ void root(int N, int cantProcesos){
             }
         }
     #pragma omp parallel for reduction(+:promedioU)
-        for(i=0; i<elementosU; i++) promedioU+= U[i];
+        for(i=0; i<elementosUporProceso; i++) promedioU+= U[i];
     timetick2 = dwalltime();
 
     MPI_Allreduce(&promedioL, &resultadoL, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
-    //MPI_Allreduce(&promedioU, &resultadoU, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+    MPI_Allreduce(&promedioU, &resultadoU, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
 
     printf("Tiempo en segundos de las comunicaciones 2: %f \n", dwalltime() - timetick2);
 
     promedioL = resultadoL/(N*N);
-    promedioU = promedioU/(N*N);
+    promedioU = resultadoU/(N*N);
     promedioL = promedioL*promedioU; //en promedioL queda el producto de ambos promedios
 	#pragma omp parallel
 	{
@@ -154,19 +156,24 @@ void root(int N, int cantProcesos){
     
     printf("Tiempo en segundos %f \n", dwalltime() - timetick);
 
-    /*int check = 1;
-    double resultado = TOTAL[0];
-    for(i=0;i<N;i++){
+	double resultado;
+	for(i=0;i<N;i++){
+		resultado = TOTAL[i*N]/promedioL;
         for(j=0;j<N;j++){
-        check = check && (TOTAL[i*N+j]==resultado);
+        check = check && (TOTAL[i*N+j]/promedioL==resultado+j);
         }
-    }
-
+	}
+	for(j=0;j<N;j++){
+		resultado = TOTAL[j*N]/promedioL;
+		for(i=0;i<N;i++){
+		    check = check && (((TOTAL[i+j*N]/promedioL)-resultado-i)==0);
+        }
+	}    
     if(check){
         printf("Multiplicacion de matriz correcta\n");
     }else{
         printf("Multiplicacion de matriz erroneo\n");
-    }*/
+    }
     free(A);
     free(B);
     free(C);
@@ -189,6 +196,7 @@ void workers(int ID, int N, int cantProcesos){
     int i,j,k;
     int filas = N/cantProcesos; //filas por proceso
     int elementosU = (N*N)-((N*(N-1))/2);
+	int elementosUporProceso = elementosU/cantProcesos;
     B=(double*)malloc(sizeof(double)*N*N);
     C=(double*)malloc(sizeof(double)*N*N);
     U=(double*)malloc(sizeof(double)*elementosU);
@@ -220,12 +228,18 @@ void workers(int ID, int N, int cantProcesos){
                 //promedioU+= U[i*N+j];
             }
         }
+	if (ID == cantProcesos-1){
     #pragma omp parallel for reduction(+:promedioU)
-        for(i=0; i<elementosU; i++) promedioU+= U[i];
+        for(i=ID*elementosUporProceso; i<elementosU; i++) promedioU+= U[i];
+	}
+	else{
+    	#pragma omp parallel for reduction(+:promedioU)
+        	for(i=ID*elementosUporProceso; i<(ID+1)*elementosUporProceso; i++) promedioU+= U[i];
+	}
     MPI_Allreduce(&promedioL, &resultadoL, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
-    //MPI_Allreduce(&promedioU, &resultadoU, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+    MPI_Allreduce(&promedioU, &resultadoU, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
     promedioL = resultadoL/(N*N);
-    promedioU = promedioU/(N*N);
+    promedioU = resultadoU/(N*N);
     promedioL = promedioL*promedioU; //en promedioL queda el producto de ambos promedios
 	#pragma omp parallel
  	{
