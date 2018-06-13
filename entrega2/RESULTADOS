@@ -1,0 +1,144 @@
+RESULTADOS SECUENCIAL OPTIMIZADO
+	Tiempo en segundos 1.533326 
+	Multiplicacion de matriz correcta
+
+	./ejercicio1secuencial 1024
+	Tiempo en segundos 12.087812 
+	Multiplicacion de matriz correcta
+
+	./ejercicio1secuencial 2048
+	Tiempo en segundos 97.188568 
+	Multiplicacion de matriz correcta
+
+
+RESULTADOS 4 PROCESOS 1 COMPUTADORA
+	mpirun -np 4 ejercicio1mpi 512
+	Tiempo en segundos de las comunicaciones 1: 0.007085 
+	Tiempo en segundos de las comunicaciones 2: 0.000098 
+	Tiempo en segundos del worker 1:  0.481700 
+	Tiempo en segundos del worker 3:  0.483825 
+	Tiempo en segundos del worker 2:  0.485840 
+	Tiempo en segundos de las comunicaciones 3: 0.002174 
+	Tiempo en segundos del root: 0.493336 
+	Multiplicacion de matriz correcta
+
+	mpirun -np 4 ejercicio1mpi 1024
+	Tiempo en segundos de las comunicaciones 1: 0.025728 
+	Tiempo en segundos de las comunicaciones 2: 0.000035 
+	Tiempo en segundos del worker 2:  3.811224 
+	Tiempo en segundos del worker 3:  3.812694 
+	Tiempo en segundos del worker 1:  3.826384 
+	Tiempo en segundos de las comunicaciones 3: 0.002291 
+	Tiempo en segundos del root: 3.861348 
+	Multiplicacion de matriz correcta
+	
+	mpirun -np 4 ejercicio1mpi 2048
+	Tiempo en segundos de las comunicaciones 1: 0.077330 
+	Tiempo en segundos de las comunicaciones 2: 0.000090 
+	Tiempo en segundos del worker 3:  30.321027 
+	Tiempo en segundos del worker 2:  30.326442 
+	Tiempo en segundos del worker 1:  30.353058 
+	Tiempo en segundos de las comunicaciones 3: 0.007681 
+	Tiempo en segundos del root: 30.613317 
+	Multiplicacion de matriz correcta
+
+RESULTADOS 4 PROCESOS 2 MAQUINAS
+	mpirun -np 4 --machinefile maquinasej1_4procesos_2maquinas ejercicio1mpi 512
+	Tiempo en segundos de las comunicaciones 1: 0.109602 
+	Tiempo en segundos de las comunicaciones 2: 0.001454 
+	Tiempo en segundos del worker 2:  0.451456 
+	Tiempo en segundos del worker 3:  0.447904 
+	Tiempo en segundos del worker 1:  0.459306 
+	Tiempo en segundos de las comunicaciones 3: 0.010566 
+	Tiempo en segundos del root: 0.575663 
+	Multiplicacion de matriz correcta
+
+	mpirun -np 4 --machinefile maquinasej1_4procesos_2maquinas ejercicio1mpi 1024
+	Tiempo en segundos de las comunicaciones 1: 0.352368 
+	Tiempo en segundos de las comunicaciones 2: 0.001458 
+	Tiempo en segundos del worker 2:  3.683137 
+	Tiempo en segundos del worker 3:  3.665770 
+	Tiempo en segundos del worker 1:  3.710428 
+	Tiempo en segundos de las comunicaciones 3: 0.036533 
+	Tiempo en segundos del root: 4.088227 
+	Multiplicacion de matriz correcta
+
+	mpirun -np 4 --machinefile maquinasej1_4procesos_2maquinas ejercicio1mpi 2048
+	Tiempo en segundos de las comunicaciones 1: 1.420045 
+	Tiempo en segundos de las comunicaciones 2: 0.001849 
+	Tiempo en segundos del worker 3:  29.191078 
+	Tiempo en segundos del worker 2:  29.267310 
+	Tiempo en segundos del worker 1:  29.417363 
+	Tiempo en segundos de las comunicaciones 3: 0.145268 
+	Tiempo en segundos del root: 31.031770 
+	Multiplicacion de matriz correcta
+
+RESULTADOS 8 PROCESOS 2 MAQUINAS
+	mpirun -np 8 --machinefile maquinasej1_8procesos ejercicio1mpi 512
+	Tiempo en segundos de las comunicaciones 1: 0.214230 
+	Tiempo en segundos de las comunicaciones 2: 0.000713 
+	Tiempo en segundos del worker 4:  0.248955 
+	Tiempo en segundos del worker 5:  0.246469 
+	Tiempo en segundos del worker 6:  0.245093 
+	Tiempo en segundos del worker 7:  0.243482 
+	Tiempo en segundos del worker 2:  0.259672 
+	Tiempo en segundos del worker 3:  0.253435 
+	Tiempo en segundos del worker 1:  0.261722 
+	Tiempo en segundos de las comunicaciones 3: 0.011301 
+	Tiempo en segundos del root: 0.471316 
+	Multiplicacion de matriz correcta
+
+	mpirun -np 8 --machinefile maquinasej1_8procesos ejercicio1mpi 1024
+	Tiempo en segundos de las comunicaciones 1: 0.364597 
+	Tiempo en segundos de las comunicaciones 2: 0.001279 
+	Tiempo en segundos del worker 5:  1.960309 
+	Tiempo en segundos del worker 6:  1.953343 
+	Tiempo en segundos del worker 7:  1.944580 
+	Tiempo en segundos del worker 4:  1.972119 
+	Tiempo en segundos del worker 3:  1.986927 
+	Tiempo en segundos del worker 1:  1.992528 
+	Tiempo en segundos del worker 2:  1.990282 
+	Tiempo en segundos de las comunicaciones 3: 0.037649 
+	Tiempo en segundos del root: 2.377366 
+	Multiplicacion de matriz correcta
+
+	mpirun -np 8 --machinefile maquinasej1_8procesos ejercicio1mpi 2048
+	Tiempo en segundos de las comunicaciones 1: 1.392588 
+	Tiempo en segundos de las comunicaciones 2: 0.001910 
+	Tiempo en segundos del worker 6:  15.512670 
+	Tiempo en segundos del worker 4:  15.587824 
+	Tiempo en segundos del worker 5:  15.558857 
+	Tiempo en segundos del worker 7:  15.489087 
+	Tiempo en segundos del worker 2:  15.698976 
+	Tiempo en segundos del worker 3:  15.713172 
+	Tiempo en segundos del worker 1:  15.780363 
+	Tiempo en segundos de las comunicaciones 3: 0.173425 
+	Tiempo en segundos del root: 17.173323 
+	Multiplicacion de matriz correcta
+
+RESULTADOS HIBRIDO - 2 MAQUINAS 4 THREADS
+	mpirun -np 2 --machinefile maquinas_ej2 ejercicio2 512
+	Tiempo en segundos de las comunicaciones 1: 0.097543 
+	Tiempo en segundos de las comunicaciones 2: 0.001600 
+	Tiempo en segundos del worker 1:  1.063715 
+	Tiempo en segundos de las comunicaciones 3: 0.017958 
+	Tiempo en segundos 1.173977 
+	Multiplicacion de matriz correcta
+	
+	mpirun -np 2 --machinefile maquinas_ej2 ejercicio2 1024
+	Tiempo en segundos de las comunicaciones 1: 0.348926 
+	Tiempo en segundos de las comunicaciones 2: 0.001637 
+	Tiempo en segundos del worker 1:  8.646166 
+	Tiempo en segundos de las comunicaciones 3: 0.217484 
+	Tiempo en segundos 9.034866 
+	Multiplicacion de matriz correcta
+
+	mpirun -np 2 --machinefile maquinas_ej2 ejercicio2 2048
+	Tiempo en segundos de las comunicaciones 1: 1.369793 
+	Tiempo en segundos de las comunicaciones 2: 0.001965 
+	Tiempo en segundos del worker 1:  68.690816 
+	Tiempo en segundos de las comunicaciones 3: 1.374673 
+	Tiempo en segundos 70.209813 
+	Multiplicacion de matriz correcta
+
+

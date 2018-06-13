@@ -103,7 +103,19 @@ int main(int argc,char*argv[]){
         check = check && (TOTAL[i*N+j]==resultado);
         }
     } */
-
+	double resultado;
+	for(i=0;i<N;i++){
+		resultado = TOTAL[i*N]/promedioL;
+        for(j=0;j<N;j++){
+        check = check && (TOTAL[i*N+j]/promedioL==resultado+j);
+        }
+	}
+	for(j=0;j<N;j++){
+		resultado = TOTAL[j*N]/promedioL;
+		for(i=0;i<N;i++){
+		    check = check && (((TOTAL[i+j*N]/promedioL)-resultado-i)==0);
+        }
+	}
     if(check){
         printf("Multiplicacion de matriz correcta\n");
     }else{
